@@ -1,68 +1,45 @@
-FROM ubuntu:14.04
-MAINTAINER tobilg <tobilg@gmail.com>
-
-# Add R list
-RUN echo 'deb http://cran.rstudio.com/bin/linux/ubuntu trusty/' | sudo tee -a /etc/apt/sources.list.d/r.list && \
-    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9
+FROM ubuntu:18.04
+LABEL maintainer="Stefan Thoss"
 
 # packages
-RUN apt-get update && apt-get install -yq --no-install-recommends --force-yes \
+RUN apt update && apt install -yq --no-install-recommends \
     wget \
-    git \
-    openjdk-7-jdk \
-    maven \
-    libjansi-java \
-    libsvn1 \
-    libcurl3 \
-    libsasl2-modules && \
-    rm -rf /var/lib/apt/lists/*
+    unzip \
+    openjdk-8-jdk \
+    python \
+    python-pip
 
 # Overall ENV vars
-ENV SPARK_VERSION 1.6.1
-ENV MESOS_BUILD_VERSION 0.28.0-2.0.16
-ENV LIVY_BUILD_VERSION livy-server-0.3.0-SNAPSHOT
+ENV SPARK_VERSION 2.4.3
+ENV LIVY_VERSION 0.6.0-incubating
 
 # Set install path for Livy
-ENV LIVY_APP_PATH /apps/$LIVY_BUILD_VERSION
-
-# Set build path for Livy
-ENV LIVY_BUILD_PATH /apps/build/livy
-
-# Set Hadoop config directory
-ENV HADOOP_CONF_DIR /etc/hadoop/conf
+ENV LIVY_APP_PATH /apps/livy
 
 # Set Spark home directory
 ENV SPARK_HOME /usr/local/spark
 
-# Set native Mesos library path
-ENV MESOS_NATIVE_JAVA_LIBRARY /usr/local/lib/libmesos.so
-
-# Mesos install
-RUN wget http://repos.mesosphere.com/ubuntu/pool/main/m/mesos/mesos_$MESOS_BUILD_VERSION.ubuntu1404_amd64.deb && \
-    dpkg -i mesos_$MESOS_BUILD_VERSION.ubuntu1404_amd64.deb && \
-    rm mesos_$MESOS_BUILD_VERSION.ubuntu1404_amd64.deb
-
 # Spark ENV vars
-ENV SPARK_VERSION_STRING spark-$SPARK_VERSION-bin-hadoop2.6
-ENV SPARK_DOWNLOAD_URL http://d3kbcqa49mib13.cloudfront.net/$SPARK_VERSION_STRING.tgz
+ENV SPARK_VERSION_STRING spark-$SPARK_VERSION-bin-hadoop2.7
+ENV SPARK_DOWNLOAD_URL http://mirrors.ocf.berkeley.edu/apache/spark/spark-$SPARK_VERSION/spark-$SPARK_VERSION-bin-hadoop2.7.tgz
+
+# Livy ENV vars
+ENV LIVY_VERSION_STRING apache-livy-$LIVY_VERSION-bin
+ENV LIVY_DOWNLOAD_URL http://mirrors.ocf.berkeley.edu/apache/incubator/livy/$LIVY_VERSION/apache-livy-$LIVY_VERSION-bin.zip
 
 # Download and unzip Spark
 RUN wget $SPARK_DOWNLOAD_URL && \
     mkdir -p $SPARK_HOME && \
     tar xvf $SPARK_VERSION_STRING.tgz -C /tmp && \
-    cp -rf /tmp/$SPARK_VERSION_STRING/* $SPARK_HOME && \
-    rm -rf -- /tmp/$SPARK_VERSION_STRING && \
-    rm spark-$SPARK_VERSION-bin-hadoop2.6.tgz
+    mv /tmp/$SPARK_VERSION_STRING/* $SPARK_HOME && \
+    rm $SPARK_VERSION_STRING.tgz
 
-# Clone Livy repository
-RUN mkdir -p /apps/build && \
-    cd /apps/build && \
-	git clone https://github.com/cloudera/livy.git && \
-	cd $LIVY_BUILD_PATH && \
-    mvn -DskipTests -Dspark.version=$SPARK_VERSION clean package && \
-    unzip $LIVY_BUILD_PATH/assembly/target/$LIVY_BUILD_VERSION.zip -d /apps && \
-    rm -rf $LIVY_BUILD_PATH && \
-	mkdir -p $LIVY_APP_PATH/upload
+# Download and unzip Livy
+RUN wget $LIVY_DOWNLOAD_URL && \
+    mkdir -p $LIVY_APP_PATH && \
+    unzip $LIVY_VERSION_STRING.zip -d /tmp && \
+    mv /tmp/$LIVY_VERSION_STRING/* $LIVY_APP_PATH && \
+    rm $LIVY_VERSION_STRING.zip
 	
 # Add custom files, set permissions
 ADD entrypoint.sh .
