@@ -10,8 +10,8 @@ RUN apt-get update && apt-get install -yq --no-install-recommends \
     python-pip
 
 # Overall ENV vars
-ENV SPARK_VERSION 2.4.4
-ENV LIVY_VERSION 0.6.0-incubating
+ENV SPARK_VERSION 2.4.5
+ENV LIVY_VERSION 0.7.0-incubating
 
 # Set install path for Livy
 ENV LIVY_APP_PATH /apps/livy
